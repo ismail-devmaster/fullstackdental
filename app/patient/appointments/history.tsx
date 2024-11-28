@@ -34,11 +34,13 @@ export default function History({ appointmentHistory, handleViewDetails }) {
                 <TableRow key={appointment.id}>
                   <TableCell>{appointment.date}</TableCell>
                   <TableCell>{appointment.time}</TableCell>
-                  <TableCell>{appointment.doctor}</TableCell>
-                  <TableCell>{appointment.reason}</TableCell>
+                  <TableCell>
+                    {appointment.doctor.firstName} {appointment.doctor.lastName}
+                  </TableCell>
+                  <TableCell>{appointment.appointmentType}</TableCell>
                   <TableCell>
                     <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                      {appointment.outcome}
+                      {appointment.status}
                     </span>
                   </TableCell>
                   <TableCell>

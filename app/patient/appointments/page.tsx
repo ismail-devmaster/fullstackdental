@@ -1,7 +1,7 @@
 // src/components/MainFile.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import BookNew from "./bookNew";
@@ -28,6 +28,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import BASE_URL from "@/lib/config";
 
 export default function MainFile() {
   const { toast } = useToast();
@@ -36,79 +37,14 @@ export default function MainFile() {
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [additionalNotes, setAdditionalNotes] = useState<string>("");
-  const [upcomingAppointments, setUpcomingAppointments] = useState([
-    {
-      id: 1,
-      date: "June 15, 2023",
-      time: "2:00 PM",
-      doctor: "Dr. Smith",
-      reason: "Cardiology Checkup",
-    },
-    {
-      id: 2,
-      date: "June 16, 2023",
-      time: "3:00 PM",
-      doctor: "Dr. Johnson",
-      reason: "Follow-up Appointment",
-    },
-    {
-      id: 3,
-      date: "June 17, 2023",
-      time: "10:00 AM",
-      doctor: "Dr. Davis",
-      reason: "Annual Physical",
-    },
-  ]);
+  const [appointmentId, setAppointmentId] = useState([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [waitingAppointments, setWaitingAppointments] = useState([]);
   const [appointmentToReschedule, setAppointmentToReschedule] = useState(null);
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
-  const [appointmentHistory, setAppointmentHistory] = useState([
-    {
-      id: 1,
-      date: "May 20, 2023",
-      time: "2:00 PM",
-      doctor: "Dr. Smith",
-      reason: "Cardiology Checkup",
-      outcome: "Completed",
-      notes: "Patient reported improved symptoms. Follow-up in 3 months.",
-    },
-    {
-      id: 2,
-      date: "May 15, 2023",
-      time: "11:00 AM",
-      doctor: "Dr. Johnson",
-      reason: "Annual Physical",
-      outcome: "Completed",
-      notes: "All vitals normal. Recommended increased physical activity.",
-    },
-    {
-      id: 3,
-      date: "May 10, 2023",
-      time: "3:30 PM",
-      doctor: "Dr. Davis",
-      reason: "Vaccination",
-      outcome: "Completed",
-      notes: "Administered flu vaccine. No adverse reactions observed.",
-    },
-    {
-      id: 4,
-      date: "May 5, 2023",
-      time: "10:00 AM",
-      doctor: "Dr. Wilson",
-      reason: "Dermatology Consult",
-      outcome: "Completed",
-      notes: "Prescribed topical treatment for eczema. Follow-up in 2 weeks.",
-    },
-    {
-      id: 5,
-      date: "May 1, 2023",
-      time: "1:00 PM",
-      doctor: "Dr. Brown",
-      reason: "Orthopedic Evaluation",
-      outcome: "Completed",
-      notes: "X-rays taken of left knee. Recommended physical therapy.",
-    },
-  ]);
+  const [appointmentHistory, setAppointmentHistory] = useState([]);
+  const [reasons, setReasons] = useState([]);
   const [selectedAppointmentDetails, setSelectedAppointmentDetails] =
     useState(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -125,36 +61,38 @@ export default function MainFile() {
     "4:00 PM",
   ];
 
-  const reasons = [
-    "General Checkup",
-    "Follow-up Appointment",
-    "Vaccination",
-    "Lab Results Review",
-    "Prescription Refill",
-    "Other (please specify)",
-  ];
+  const handleConfirmAppointment = async () => {
+    // if (!date || !selectedTime || !selectedReason || !selectedDoctor) {
+    //   toast({
+    //     title: "Error",
+    //     description: "Please select a new date and time.",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+    // const url = `${BASE_URL}/appointments`;
+    // const method = "POST";
 
-  const handleConfirmAppointment = () => {
-    const newAppointment = {
-      id: Date.now(),
-      date: format(date, "MMMM d, yyyy"),
-      time: selectedTime,
-      doctor: selectedDoctor,
-      reason: selectedReason,
-    };
+    // const res = await fetch(url, {
+    //   method,
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify({
+    //     patientId: 1,
+    //     doctorId: selectedDoctor,
+    //     date: format(date, "MMMM d, yyyy"),
+    //     time: selectedTime,
+    //     appointmentType: selectedReason,
+    //     additionalNotes: additionalNotes,
+    //     status: "waiting",
+    //   }),
+    // });
 
-    setWaitingAppointments((prevAppointments) => [
-      ...prevAppointments,
-      newAppointment,
-    ]);
-
-    toast({
-      title: "Appointment Confirmed",
-      description: `Your appointment is scheduled for ${format(
-        date,
-        "MMMM d, yyyy"
-      )} at ${selectedTime}`,
-    });
+    // if (res.ok) {
+    //   fetchAllData();
+    // } else {
+    //   alert("Error saving data");
+    // }
+    alert(selectedReason);
 
     // Reset form
     setDate(new Date());
@@ -184,9 +122,10 @@ export default function MainFile() {
   const handleReschedule = (appointment) => {
     setAppointmentToReschedule(appointment);
     setIsRescheduleDialogOpen(true);
+    setAppointmentId(appointment.id);
   };
 
-  const handleConfirmReschedule = () => {
+  const handleConfirmReschedule = async () => {
     if (!date || !selectedTime) {
       toast({
         title: "Error",
@@ -196,30 +135,25 @@ export default function MainFile() {
       return;
     }
 
-    const updatedAppointment = {
-      ...appointmentToReschedule,
-      date: format(date, "MMMM d, yyyy"),
-      time: selectedTime,
-    };
-
-    // Remove the appointment from upcomingAppointments
-    setUpcomingAppointments((appointments) =>
-      appointments.filter((apt) => apt.id !== appointmentToReschedule.id)
-    );
-
-    // Add the updated appointment to waitingAppointments
-    setWaitingAppointments((appointments) => [
-      ...appointments,
-      updatedAppointment,
-    ]);
-
-    toast({
-      title: "Appointment Rescheduled",
-      description: `Your appointment has been rescheduled to ${format(
-        date,
-        "MMMM d, yyyy"
-      )} at ${selectedTime}`,
+    const url = `${BASE_URL}/appointments/${appointmentId}`;
+    const method = "PUT";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // date: "2030-11-30T10:00:00.000Z",
+        // time: "2040-11-30T10:00:00.000Z",
+        date: format(date, "MMMM d, yyyy"),
+        time: selectedTime,
+        status: "waiting",
+      }),
     });
+
+    if (res.ok) {
+      fetchAllData(); // Refresh users list
+    } else {
+      alert("Error saving data");
+    }
 
     setIsRescheduleDialogOpen(false);
     setAppointmentToReschedule(null);
@@ -228,13 +162,19 @@ export default function MainFile() {
     setActiveTab("waiting");
   };
 
-  const handleCancel = (appointmentId) => {
-    setUpcomingAppointments((appointments) =>
-      appointments.filter((apt) => apt.id !== appointmentId)
-    );
-    setWaitingAppointments((appointments) =>
-      appointments.filter((apt) => apt.id !== appointmentId)
-    );
+  const handleCancel = async (appointmentId) => {
+    const url = `${BASE_URL}/appointments/${appointmentId}`;
+    const method = "DELETE";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (res.ok) {
+      fetchAllData(); // Refresh users list
+    } else {
+      alert("Error saving data");
+    }
 
     toast({
       title: "Appointment Cancelled",
@@ -266,6 +206,42 @@ export default function MainFile() {
     }
   };
 
+  const fetchAllData = async () => {
+    const resAppointments = await fetch(`${BASE_URL}/appointments`);
+    const appointmentsData = await resAppointments.json();
+    const resDoctors = await fetch(`https://newdentalapi.onrender.com/doctors`);
+    const doctorsData = await resDoctors.json();
+    const resResons = await fetch(`https://newdentalapi.onrender.com/types`);
+    const reasonsData = await resResons.json();
+
+    // setAppointments(appointmentsData);
+    setUpcomingAppointments(
+      appointmentsData.filter(
+        (appointment) => appointment.status === "upcoming"
+      )
+    );
+    setWaitingAppointments(
+      appointmentsData.filter((appointment) => appointment.status === "waiting")
+    );
+    setAppointmentHistory(
+      appointmentsData.filter(
+        (appointment) =>
+          appointment.status === "upcoming" ||
+          appointment.status === "completed"
+      )
+    );
+    setDoctors(doctorsData);
+    setReasons(reasonsData);
+  };
+  useEffect(() => {
+    fetchAllData();
+  }, [
+    upcomingAppointments,
+    waitingAppointments,
+    appointmentHistory,
+    doctors,
+    reasons,
+  ]);
   return (
     <div className="w-full max-w-6xl mx-auto">
       <main>
@@ -308,6 +284,7 @@ export default function MainFile() {
 
           <TabsContent value="book-new">
             <BookNew
+              doctors={doctors}
               date={date}
               setDate={setDate}
               selectedTime={selectedTime}
@@ -325,7 +302,6 @@ export default function MainFile() {
               handleSelectDate={handleSelectDate}
             />
           </TabsContent>
-
           <TabsContent value="waiting">
             <Waiting
               waitingAppointments={waitingAppointments}
@@ -333,7 +309,6 @@ export default function MainFile() {
               handleCancel={handleCancel}
             />
           </TabsContent>
-
           <TabsContent value="upcoming">
             <Upcoming
               upcomingAppointments={upcomingAppointments}
@@ -438,25 +413,26 @@ export default function MainFile() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right font-bold">Doctor:</Label>
                 <div className="col-span-3">
-                  {selectedAppointmentDetails.doctor}
+                  {selectedAppointmentDetails.doctor.firstName}{" "}
+                  {selectedAppointmentDetails.doctor.lastName}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right font-bold">Reason:</Label>
                 <div className="col-span-3">
-                  {selectedAppointmentDetails.reason}
+                  {selectedAppointmentDetails.appointmentType}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right font-bold">Outcome:</Label>
                 <div className="col-span-3">
-                  {selectedAppointmentDetails.outcome}
+                  {selectedAppointmentDetails.status}
                 </div>
               </div>
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label className="text-right font-bold">Notes:</Label>
                 <div className="col-span-3">
-                  {selectedAppointmentDetails.notes}
+                  {selectedAppointmentDetails.additionalNotes}
                 </div>
               </div>
             </div>

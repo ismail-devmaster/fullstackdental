@@ -1,4 +1,4 @@
-// src/components/BookNew.tsx
+import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,27 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+interface BookNewProps {
+  date: Date | undefined;
+  setDate: (date: Date | undefined) => void;
+  selectedTime: string;
+  setSelectedTime: (time: string) => void;
+  selectedDoctor: string;
+  setSelectedDoctor: (doctor: string) => void;
+  selectedReason: string;
+  setSelectedReason: (reason: string) => void;
+  additionalNotes: string;
+  setAdditionalNotes: (notes: string) => void;
+  handleConfirmAppointment: () => void;
+  handleCancelBooking: () => void;
+  timeSlots: string[];
+  reasons: string[];
+  doctors: string[];
+  handleSelectDate: (date: Date | undefined) => void;
+}
+
 export default function BookNew({
+  doctors,
   date,
   setDate,
   selectedTime,
@@ -35,7 +55,7 @@ export default function BookNew({
   timeSlots,
   reasons,
   handleSelectDate,
-}) {
+}: BookNewProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       <Card className="md:col-span-2">
@@ -48,7 +68,6 @@ export default function BookNew({
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
                 onSelect={handleSelectDate}
                 fromDate={new Date()}
                 className="rounded-md border-gray-200 dark:border-gray-700"
@@ -76,47 +95,32 @@ export default function BookNew({
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="doctor">Select Doctor</Label>
-            <Select
-              value={selectedDoctor || ""}
-              onValueChange={setSelectedDoctor}
-            >
+            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
               <SelectTrigger id="doctor">
                 <SelectValue placeholder="Choose a doctor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Dr. Smith">
-                  <div className="flex items-center">
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage
-                        src="/placeholder.svg?height=24&width=24"
-                        alt="Dr. Smith"
-                      />
-                      <AvatarFallback>DS</AvatarFallback>
-                    </Avatar>
-                    Dr. Smith (Cardiology)
-                  </div>
-                </SelectItem>
-                <SelectItem value="Dr. Johnson">
-                  <div className="flex items-center">
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage
-                        src="/placeholder.svg?height=24&width=24"
-                        alt="Dr. Johnson"
-                      />
-                      <AvatarFallback>DJ</AvatarFallback>
-                    </Avatar>
-                    Dr. Johnson (Neurology)
-                  </div>
-                </SelectItem>
+                {doctors.map((doctor) => (
+                  <SelectItem key={doctor.firstName} value={doctor.id}>
+                    <div className="flex items-center">
+                      <Avatar className="h-6 w-6 mr-2">
+                        <AvatarImage
+                          src="/placeholder.svg?height=24&width=24"
+                          alt={doctor.firstName}
+                        />
+                        <AvatarFallback>Dr</AvatarFallback>
+                      </Avatar>
+                      Dr. {doctor.firstName} {doctor.lastName} (
+                      {doctor.specialty})
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="reason">Reason for Visit</Label>
-            <Select
-              value={selectedReason || ""}
-              onValueChange={setSelectedReason}
-            >
+            <Select value={selectedReason} onValueChange={setSelectedReason}>
               <SelectTrigger id="reason">
                 <SelectValue placeholder="Select reason" />
               </SelectTrigger>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import BASE_URL from "@/lib/config";
 
 interface Patient {
   fullName: string;
@@ -52,120 +55,119 @@ interface Appointment {
 const Component = () => {
   const [upcomingAppointments, setUpcomingAppointments] = useState<
     Appointment[]
-  >([
-    {
-      id: 1,
-      date: "2023-06-15",
-      time: "10:00 AM",
-      doctor: "Dr. Smith",
-      reason: "Annual checkup",
-      notes:
-        "Remember to bring your health insurance card and a list of current medications.",
-      patient: {
-        fullName: "John Doe",
-        age: 35,
-        sex: "Male",
-        phoneNumber: "123-456-7890",
-        email: "john.doe@example.com",
-        dateOfBirth: "1988-03-15",
-        medicalHistory:
-          "Allergies: Penicillin, Peanuts; Chronic Conditions: Hypertension (2015), Type 2 Diabetes (2018);Past Surgeries: Appendectomy (2010)",
-      },
-    },
-    {
-      id: 2,
-      date: "2023-06-18",
-      time: "2:30 PM",
-      doctor: "Dr. Johnson",
-      reason: "Follow-up consultation",
-      notes:
-        "Bring recent lab test results and any questions you have about your treatment plan.",
-      patient: {
-        fullName: "Jane Smith",
-        age: 28,
-        sex: "Female",
-        phoneNumber: "987-654-3210",
-        email: "jane.smith@example.com",
-        dateOfBirth: "1995-07-22",
-        medicalHistory: "Allergic to penicillin.",
-      },
-    },
-    {
-      id: 3,
-      date: "2023-06-20",
-      time: "11:15 AM",
-      doctor: "Dr. Williams",
-      reason: "Dental cleaning",
-      notes:
-        "Please arrive 15 minutes early to fill out necessary paperwork. Don't forget to brush and floss before your appointment.",
-      patient: {
-        fullName: "Bob Johnson",
-        age: 42,
-        sex: "Male",
-        phoneNumber: "555-123-4567",
-        email: "bob.johnson@example.com",
-        dateOfBirth: "1981-11-30",
-        medicalHistory: "History of hypertension.",
-      },
-    },
-  ]);
+  >([]);
 
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
   const [isPatientInfoDialogOpen, setIsPatientInfoDialogOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState([]);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
-  const [newDoctor, setNewDoctor] = useState("");
+  const [newDoctor, setNewDoctor] = useState();
 
-  const availableDoctors = [
-    "Dr. Smith",
-    "Dr. Johnson",
-    "Dr. Williams",
-    "Dr. Brown",
-    "Dr. Davis",
-  ];
+  const [doctors, setDoctors] = useState([]);
+  const [patient, setPatient] = useState({});
 
   const handleReschedule = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
-    setNewDate(appointment.date);
-    setNewTime(appointment.time);
-    setNewDoctor(appointment.doctor);
+    // setNewDate(appointment.date);
+    // setNewTime(appointment.time);
+    setNewDoctor(appointment.doctorId);
     setIsRescheduleDialogOpen(true);
   };
 
-  const handleRescheduleConfirm = () => {
+  const handleRescheduleConfirm = async () => {
+    if (!newTime || !newDate || !newDoctor) {
+      toast({
+        title: "Error",
+        description: "Please select a new date and time.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (selectedAppointment) {
-      const updatedAppointments = upcomingAppointments.map((apt) =>
-        apt.id === selectedAppointment.id
-          ? { ...apt, date: newDate, time: newTime, doctor: newDoctor }
-          : apt
-      );
-      setUpcomingAppointments(updatedAppointments);
+      const url = `${BASE_URL}/appointments/${selectedAppointment.id}`;
+      const method = "PUT";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: format(newDate, "MMMM d, yyyy"),
+          time: newTime,
+          doctorId: newDoctor,
+          status: "waiting",
+        }),
+      });
+
+      if (res.ok) {
+        fetchAllData(); // Refresh users list
+      } else {
+        alert("Error saving data");
+      }
       setIsRescheduleDialogOpen(false);
-      setUpcomingAppointments((prevAppointments) =>
-        prevAppointments.filter((apt) => apt.id !== selectedAppointment.id)
-      );
     }
   };
 
-  const handleCancel = (id: number) => {
-    setUpcomingAppointments((prevAppointments) =>
-      prevAppointments.filter((apt) => apt.id !== id)
-    );
+  const handleCancel = async (id: number) => {
+    const url = `${BASE_URL}/appointments/${id}`;
+    const method = "DELETE";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (res.ok) {
+      fetchAllData(); // Refresh users list
+    } else {
+      alert("Error saving data");
+    }
+
+    toast({
+      title: "Appointment Cancelled",
+      description: "Your appointment has been cancelled successfully.",
+    });
   };
 
-  const handleConfirm = (id: number) => {
-    setUpcomingAppointments((prevAppointments) =>
-      prevAppointments.filter((apt) => apt.id !== id)
-    );
+  const handleConfirm = async (id: number) => {
+    const url = `${BASE_URL}/appointments/${id}`;
+    const method = "PUT";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "upcoming",
+      }),
+    });
+
+    if (res.ok) {
+      fetchAllData(); // Refresh users list
+    } else {
+      alert("Error saving data");
+    }
   };
 
-  const handlePatientInfoClick = (appointment: Appointment) => {
+  const handlePatientInfoClick = async (appointment: Appointment) => {
     setSelectedAppointment(appointment);
+    const resPatient = await fetch(
+      `${BASE_URL}/patients/${appointment.patientId}`
+    );
+    const patientData = await resPatient.json();
+    setPatient(patientData.at(0));
     setIsPatientInfoDialogOpen(true);
   };
 
+  const fetchAllData = async () => {
+    const resAppointments = await fetch(`${BASE_URL}/appointments`);
+    const appointmentsData = await resAppointments.json();
+    const resDoctors = await fetch(`${BASE_URL}/doctors`);
+    const doctorsData = await resDoctors.json();
+    setUpcomingAppointments(
+      appointmentsData.filter((appointment) => appointment.status === "waiting")
+    );
+    setDoctors(doctorsData);
+  };
+  useEffect(() => {
+    fetchAllData();
+  }, [upcomingAppointments, doctors]);
   return (
     <>
       <Tabs defaultValue="upcoming">
@@ -188,7 +190,8 @@ const Component = () => {
                       onClick={() => handlePatientInfoClick(appointment)}
                     >
                       <span className="text-blue-500 hover:underline">
-                        {appointment.patient.fullName}
+                        {appointment.patient.firstName}{" "}
+                        {appointment.patient.lastName}
                       </span>
                     </Button>
                   </CardTitle>
@@ -201,18 +204,19 @@ const Component = () => {
                   <div className="flex items-center mb-2">
                     <User className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                     <p className="font-semibold text-gray-900 dark:text-white">
-                      {appointment.doctor}
+                      {appointment.doctor.firstName}{" "}
+                      {appointment.doctor.lastName}
                     </p>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    {appointment.reason}
+                    {appointment.appointmentType}
                   </p>
                   <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                       Additional Notes:
                     </h4>
                     <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {appointment.notes}
+                      {appointment.additionalNotes}
                     </p>
                   </div>
                 </CardContent>
@@ -288,9 +292,9 @@ const Component = () => {
                   <SelectValue placeholder="Select a doctor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableDoctors.map((doctor) => (
-                    <SelectItem key={doctor} value={doctor}>
-                      {doctor}
+                  {doctors.map((doctor) => (
+                    <SelectItem key={doctor.firstName} value={doctor.id}>
+                      {doctor.firstName} {doctor.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -330,26 +334,22 @@ const Component = () => {
                     <div>
                       <Label className="text-xs">Full Name</Label>
                       <p className="text-sm font-medium">
-                        {selectedAppointment.patient.fullName}
+                        {patient.firstName} {patient.lastName}
                       </p>
                     </div>
                     <div>
                       <Label className="text-xs">Age</Label>
-                      <p className="text-sm font-medium">
-                        {selectedAppointment.patient.age}
-                      </p>
+                      <p className="text-sm font-medium">{patient.age}</p>
                     </div>
                     <div>
                       <Label className="text-xs">Date of Birth</Label>
                       <p className="text-sm font-medium">
-                        {selectedAppointment.patient.dateOfBirth}
+                        {patient.dateOfBirth}
                       </p>
                     </div>
                     <div>
                       <Label className="text-xs">Sex</Label>
-                      <p className="text-sm font-medium">
-                        {selectedAppointment.patient.sex}
-                      </p>
+                      <p className="text-sm font-medium">{patient.sex}</p>
                     </div>
                   </div>
                 </div>
@@ -361,14 +361,12 @@ const Component = () => {
                     <div>
                       <Label className="text-xs">Phone Number</Label>
                       <p className="text-sm font-medium">
-                        {selectedAppointment.patient.phoneNumber}
+                        {patient?.phoneNumber}
                       </p>
                     </div>
                     <div>
                       <Label className="text-xs">Email</Label>
-                      <p className="text-sm font-medium">
-                        {selectedAppointment.patient.email}
-                      </p>
+                      <p className="text-sm font-medium">{patient?.email}</p>
                     </div>
                   </div>
                 </div>
@@ -377,7 +375,7 @@ const Component = () => {
                     Medical History
                   </h4>
                   <p className="text-sm whitespace-pre-wrap">
-                    {selectedAppointment.patient.medicalHistory}
+                    {patient.medicalHistory}
                   </p>
                 </div>
               </>

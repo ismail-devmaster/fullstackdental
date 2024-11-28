@@ -38,35 +38,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import BASE_URL from "@/lib/config";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 const ReceptionistAppointments = () => {
-  // export function ReceptionistAppointments() {
-  const [appointments, setAppointments] = React.useState([
-    {
-      id: 1,
-      patientName: "Sarah Johnson",
-      doctorName: "Dr. John Smith",
-      type: "General Checkup",
-      date: "2024-11-15",
-      time: "14:00",
-    },
-    {
-      id: 2,
-      patientName: "Mike Brown",
-      doctorName: "Dr. Sarah Lee",
-      type: "Dental Cleaning",
-      date: "2024-11-17",
-      time: "10:00",
-    },
-    {
-      id: 3,
-      patientName: "Emily White",
-      doctorName: "Dr. Michael Johnson",
-      type: "Annual Physical",
-      date: "2024-11-30",
-      time: "11:00",
-    },
-  ]);
+  const [appointments, setAppointments] = React.useState([]);
+  const [doctors, setDoctors] = React.useState([]);
+  const [appointmentTypes, setappointmentTypes] = React.useState([]);
 
   const [isAddingAppointment, setIsAddingAppointment] = React.useState(false);
   const [selectedAppointment, setSelectedAppointment] = React.useState(null);
@@ -81,22 +60,6 @@ const ReceptionistAppointments = () => {
     { id: 5, name: "Jane Smith" },
   ];
 
-  const doctors = [
-    { id: 1, name: "Dr. John Smith" },
-    { id: 2, name: "Dr. Sarah Lee" },
-    { id: 3, name: "Dr. Michael Johnson" },
-    { id: 4, name: "Dr. Emily Brown" },
-    { id: 5, name: "Dr. David Wilson" },
-  ];
-
-  const appointmentTypes = [
-    "General Checkup",
-    "Dental Cleaning",
-    "Annual Physical",
-    "Vaccination",
-    "Consultation",
-  ];
-
   const handleAddAppointment = (newAppointment) => {
     setAppointments([
       ...appointments,
@@ -109,31 +72,67 @@ const ReceptionistAppointments = () => {
     setIsAddingAppointment(false);
   };
 
-  const handleUpdateAppointment = (updatedAppointment) => {
-    setAppointments(
-      appointments.map((a) =>
-        a.id === updatedAppointment.id
-          ? {
-              ...a,
-              ...updatedAppointment,
-              doctorName: updatedAppointment.doctorName,
-            }
-          : a
-      )
-    );
+  const handleUpdateAppointment = async (updatedAppointment) => {
+    const url = `${BASE_URL}/appointments/${updatedAppointment.id}`;
+    const method = "PUT";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: format(updatedAppointment.date, "MMMM d, yyyy"),
+        time: updatedAppointment.time,
+        doctorId: Number(updatedAppointment.doctorName),
+        appointmentType: updatedAppointment.type,
+        status: "upcoming",
+      }),
+    });
+
+    if (res.ok) {
+      fetchAllData(); // Refresh users list
+      console.log(updatedAppointment);
+    } else {
+      alert("Error saving data");
+    }
     setSelectedAppointment(null);
   };
 
-  const handleRemoveAppointment = (id) => {
-    setAppointments(appointments.filter((a) => a.id !== id));
+  const handleRemoveAppointment = async (id) => {
+    const url = `${BASE_URL}/appointments/${id}`;
+    const method = "DELETE";
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (res.ok) {
+      fetchAllData(); // Refresh users list
+    } else {
+      alert("Error saving data");
+    }
+
+    toast({
+      title: "Appointment Cancelled",
+      description: "Your appointment has been cancelled successfully.",
+    });
   };
 
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
-      appointment.patientName
+      appointment.patient.firstName
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      appointment.type.toLowerCase().includes(searchTerm.toLowerCase());
+      appointment.patient.lastName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      appointment.doctor.firstName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      appointment.doctor.lastName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      appointment.appointmentType
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
     const appointmentDate = new Date(appointment.date);
     const today = new Date();
@@ -166,9 +165,33 @@ const ReceptionistAppointments = () => {
     }
   });
 
+  const handleEditAppointment = async (appointment) => {
+    setSelectedAppointment(appointment);
+    const resDoctors = await fetch(`${BASE_URL}/doctors`);
+    const doctorsData = await resDoctors.json();
+    setDoctors(doctorsData);
+
+    const resTypes = await fetch(`${BASE_URL}/types`);
+    const typesData = await resTypes.json();
+    setappointmentTypes(typesData);
+  };
+
   const today = new Date();
   const formattedToday = today.toISOString().split("T")[0];
 
+  const fetchAllData = async () => {
+    const resAppointments = await fetch(`${BASE_URL}/appointments`);
+    const appointmentsData = await resAppointments.json();
+
+    setAppointments(
+      appointmentsData.filter(
+        (appointment) => appointment.status === "upcoming"
+      )
+    );
+  };
+  React.useEffect(() => {
+    fetchAllData();
+  }, [appointments]);
   return (
     <div className="w-full max-w-6xl mx-auto">
       <h1 className="text-4xl font-extrabold text-gray-900 mb-8 text-center dark:text-white">
@@ -331,9 +354,15 @@ const ReceptionistAppointments = () => {
               <TableBody>
                 {filteredAppointments.map((appointment) => (
                   <TableRow key={appointment.id}>
-                    <TableCell>{appointment.patientName}</TableCell>
-                    <TableCell>{appointment.doctorName}</TableCell>
-                    <TableCell>{appointment.type}</TableCell>
+                    <TableCell>
+                      {appointment.patient.firstName}{" "}
+                      {appointment.patient.lastName}
+                    </TableCell>
+                    <TableCell>
+                      {appointment.doctor.firstName}{" "}
+                      {appointment.doctor.lastName}
+                    </TableCell>
+                    <TableCell>{appointment.appointmentType}</TableCell>
                     <TableCell>{`${appointment.date} ${appointment.time}`}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -342,9 +371,7 @@ const ReceptionistAppointments = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                setSelectedAppointment(appointment)
-                              }
+                              onClick={() => handleEditAppointment(appointment)}
                             >
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </Button>
@@ -375,12 +402,7 @@ const ReceptionistAppointments = () => {
                                     >
                                       Doctor Name
                                     </Label>
-                                    <Select
-                                      name="doctorName"
-                                      defaultValue={
-                                        selectedAppointment.doctorName
-                                      }
-                                    >
+                                    <Select name="doctorName">
                                       <SelectTrigger className="col-span-3">
                                         <SelectValue placeholder="Select a doctor" />
                                       </SelectTrigger>
@@ -388,9 +410,9 @@ const ReceptionistAppointments = () => {
                                         {doctors.map((doctor) => (
                                           <SelectItem
                                             key={doctor.id}
-                                            value={doctor.name}
+                                            value={doctor.id}
                                           >
-                                            {doctor.name}
+                                            {doctor.firstName}
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
@@ -403,17 +425,17 @@ const ReceptionistAppointments = () => {
                                     >
                                       Appointment Type
                                     </Label>
-                                    <Select
-                                      name="type"
-                                      defaultValue={selectedAppointment.type}
-                                    >
+                                    <Select name="type">
                                       <SelectTrigger className="col-span-3">
                                         <SelectValue placeholder="Select appointment type" />
                                       </SelectTrigger>
                                       <SelectContent>
                                         {appointmentTypes.map((type) => (
-                                          <SelectItem key={type} value={type}>
-                                            {type}
+                                          <SelectItem
+                                            key={type.type}
+                                            value={type.type}
+                                          >
+                                            {type.type}
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
@@ -430,7 +452,6 @@ const ReceptionistAppointments = () => {
                                       id="edit-date"
                                       name="date"
                                       type="date"
-                                      defaultValue={selectedAppointment.date}
                                       className="col-span-3"
                                     />
                                   </div>
@@ -445,7 +466,6 @@ const ReceptionistAppointments = () => {
                                       id="edit-time"
                                       name="time"
                                       type="time"
-                                      defaultValue={selectedAppointment.time}
                                       className="col-span-3"
                                     />
                                   </div>
